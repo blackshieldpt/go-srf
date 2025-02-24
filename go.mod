@@ -1,4 +1,4 @@
-module go-srf
+module github.com/blackshieldpt/go-srf
 
 go 1.22.2
 
