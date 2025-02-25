@@ -141,6 +141,37 @@ func Copy(src io.Reader, dst io.Writer, start int64, count int64, compress bool,
 	}
 }
 
+func Tail(src io.Reader, count int, allowPrematureEnd bool) ([]Record, error) {
+	buf := make([]Record, 0)
+	c := 0
+	for {
+		if r, err := Read(src); err != nil {
+			if errors.Is(err, io.EOF) {
+				// end of file, return buf if filled or if allowPrematureEnd
+				if c == count {
+					return buf, nil
+				}
+				// buf != count, requires allowPrematureEnd for clean exit
+				if allowPrematureEnd {
+					return buf, nil
+				}
+			}
+			// return error
+			return nil, err
+		} else {
+			// if buffer is at capacity, roll lines
+			if c == count {
+				// pop head
+				buf = buf[1:]
+			} else {
+				c++
+			}
+			// append new record
+			buf = append(buf, r)
+		}
+	}
+}
+
 // skipRead reads and skips a record to advance the read offset
 func skipRead(src io.Reader) error {
 	if err := validateHeader(src); err != nil {

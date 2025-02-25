@@ -243,3 +243,67 @@ func TestCopy(t *testing.T) {
 	testCopyPrematureEnd(t, true)
 
 }
+
+func testTailSimple(t *testing.T) {
+	ds := testDataset()
+	buf := bufDataset(t, ds)
+	src := bytes.NewReader(buf.Bytes())
+
+	// tail 1 row
+	rows, err := Tail(src, 1, false)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, len(rows))
+	assert.Equal(t, rows[0].Type(), ds[len(ds)-1].RecordType)
+	assert.Equal(t, rows[0].Bytes(), ds[len(ds)-1].Data)
+
+	// tail 3 rows
+	src.Seek(0, io.SeekStart)
+	rows, err = Tail(src, 3, false)
+	assert.NoError(t, err)
+	assert.Equal(t, 3, len(rows))
+	idx := len(ds) - 3
+	for i := 0; i < 3; i++ {
+		assert.Equal(t, rows[i].Type(), ds[idx+i].RecordType)
+		assert.Equal(t, rows[i].Bytes(), ds[idx+i].Data)
+	}
+}
+
+func testTailEOF(t *testing.T) {
+	ds := testDataset()
+	src := bytes.NewReader(make([]byte, 0))
+
+	// tail 1 row from empty buffer
+	rows, err := Tail(src, 1, true)
+	assert.NoError(t, err)
+	assert.Equal(t, 0, len(rows))
+
+	// tail 2 rows from incomplete buffer
+	buf := new(bytes.Buffer)
+	err = Write(buf, ds[0].RecordType, ds[0].Data, nil, false)
+	assert.NoError(t, err)
+	src = bytes.NewReader(buf.Bytes())
+	rows, err = Tail(src, 2, true)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, len(rows))
+	// confirm returned row reflects written value
+	assert.Equal(t, rows[0].Type(), ds[0].RecordType)
+	assert.Equal(t, rows[0].Bytes(), ds[0].Data)
+
+	// tail 13 rows from a smaller dataset
+	buf = bufDataset(t, ds)
+	src = bytes.NewReader(buf.Bytes())
+
+	// tail 13 rows
+	src.Seek(0, io.SeekStart)
+	rows, err = Tail(src, 13, true)
+	assert.NoError(t, err)
+	assert.Equal(t, len(ds), len(rows))
+	for i, r := range ds {
+		assert.Equal(t, r.Data, rows[i].Bytes())
+	}
+}
+
+func TestTail(t *testing.T) {
+	testTailSimple(t)
+	testTailEOF(t)
+}
