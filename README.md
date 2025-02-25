@@ -40,7 +40,7 @@ var records = []string{
 
 func main() {
 
-	spfFileName := "sample.spf"
+	spfFileName := "sample.srf"
 
 	// create spf file
 	dst, err := os.Create(spfFileName)
